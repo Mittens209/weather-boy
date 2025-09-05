@@ -1,4 +1,7 @@
 import os
+import sys
+import time
+import threading
 from dotenv import load_dotenv
 from openai import OpenAI
 
@@ -41,11 +44,48 @@ Then provide recommendations for:
 
     return response.choices[0].message.content
 
+class LoadingAnimation:
+    def __init__(self, message="Loading"):
+        self.message = message
+        self.is_running = False
+        self.animation_thread = None
+
+    def animate(self):
+        dots = 1
+        while self.is_running:
+            sys.stdout.write('\r' + self.message + '.' * dots + ' ' * (3 - dots))
+            sys.stdout.flush()
+            dots = (dots + 1) % 4
+            time.sleep(0.5)
+
+    def start(self):
+        self.is_running = True
+        self.animation_thread = threading.Thread(target=self.animate)
+        self.animation_thread.start()
+
+    def stop(self):
+        self.is_running = False
+        if self.animation_thread:
+            self.animation_thread.join()
+        sys.stdout.write('\r' + ' ' * (len(self.message) + 3) + '\r')
+        sys.stdout.flush()
+
 def main():
     city = input("Enter the city name: ").strip()
-    print("\nGenerating weather report…\n")
-    report = generate_weather_report(city)
-    print(report)
+    print()  # Add a blank line for spacing
+    
+    # Create and start the loading animation
+    loading = LoadingAnimation("Generating weather report")
+    loading.start()
+    
+    try:
+        # Generate the report
+        report = generate_weather_report(city)
+    finally:
+        # Stop the animation regardless of success or failure
+        loading.stop()
+    
+    print("\n" + report)
 
 if __name__ == "__main__":
     main()
